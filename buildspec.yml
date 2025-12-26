@@ -5,16 +5,15 @@ env:
     AWS_REGION: us-east-1
     AWS_ACCOUNT_ID: "479699168596"
     ECR_REPO: "api-gateway"
+    SERVICE_DIR: "api-gateway"   # <-- change this (e.g. backend/api-gateway)
 
 phases:
-  install:
-    runtime-versions:
-      java: corretto17
   pre_build:
     commands:
-      - echo "Logging in to Amazon ECR..."
-      - aws --version
-      - docker --version
+      - set -e
+      - echo "Listing repo root to verify paths..."
+      - pwd
+      - ls -la
       - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
       - REPOSITORY_URI=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}
       - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
@@ -22,17 +21,15 @@ phases:
 
   build:
     commands:
-      - echo "Building api-gateway jar..."
-      - cd api-gateway
-      - mvn clean package -DskipTests
-      - echo "Building Docker image..."
+      - cd $SERVICE_DIR
+      - chmod +x mvnw || true
+      - ./mvnw clean package -DskipTests
       - docker build -t ${ECR_REPO}:${IMAGE_TAG} .
       - docker tag ${ECR_REPO}:${IMAGE_TAG} ${REPOSITORY_URI}:${IMAGE_TAG}
       - docker tag ${ECR_REPO}:${IMAGE_TAG} ${REPOSITORY_URI}:latest
 
   post_build:
     commands:
-      - echo "Pushing Docker image..."
       - docker push ${REPOSITORY_URI}:${IMAGE_TAG}
       - docker push ${REPOSITORY_URI}:latest
       - printf '[{"name":"%s","imageUri":"%s"}]' "${ECR_REPO}" "${REPOSITORY_URI}:${IMAGE_TAG}" > imagedefinitions.json
