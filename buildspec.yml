@@ -2,43 +2,43 @@ version: 0.2
 
 env:
   variables:
-    AWS_REGION: us-east-1
+    AWS_REGION: "us-east-1"
     AWS_ACCOUNT_ID: "479699168596"
     ECR_REPO: "api-gateway"
-    SERVICE_DIR: "backend/api-gateway"
+    SERVICE_DIR: "."
     CONTAINER_NAME: "api-gateway"
 
 phases:
   pre_build:
     commands:
-      - set -e
-      - echo "Workspace: $(pwd)"
-      - ls -la
-      - aws --version
-      - docker --version
-      - echo "Logging in to ECR..."
-      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
-      - REPOSITORY_URI=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}
-      - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
-      - IMAGE_TAG=${COMMIT_HASH:-latest}
+      - "set -e"
+      - 'echo "Workspace: $(pwd)"'
+      - "ls -la"
+      - "aws --version"
+      - "docker --version"
+      - 'echo "Logging in to ECR..."'
+      - 'aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"'
+      - 'REPOSITORY_URI="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}"'
+      - 'COMMIT_HASH="$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)"'
+      - 'IMAGE_TAG="${COMMIT_HASH:-latest}"'
 
   build:
     commands:
-      - echo "Building from: $SERVICE_DIR"
-      - cd "$SERVICE_DIR"
-      - chmod +x mvnw || true
-      - ./mvnw clean package -DskipTests
-      - docker build -t ${ECR_REPO}:${IMAGE_TAG} .
-      - docker tag ${ECR_REPO}:${IMAGE_TAG} ${REPOSITORY_URI}:${IMAGE_TAG}
-      - docker tag ${ECR_REPO}:${IMAGE_TAG} ${REPOSITORY_URI}:latest
+      - 'echo "Building from: $SERVICE_DIR"'
+      - 'cd "$SERVICE_DIR"'
+      - "chmod +x mvnw || true"
+      - "./mvnw clean package -DskipTests"
+      - 'docker build -t "${ECR_REPO}:${IMAGE_TAG}" .'
+      - 'docker tag "${ECR_REPO}:${IMAGE_TAG}" "${REPOSITORY_URI}:${IMAGE_TAG}"'
+      - 'docker tag "${ECR_REPO}:${IMAGE_TAG}" "${REPOSITORY_URI}:latest"'
 
   post_build:
     commands:
-      - echo "Pushing image to ECR..."
-      - docker push ${REPOSITORY_URI}:${IMAGE_TAG}
-      - docker push ${REPOSITORY_URI}:latest
-      - printf '[{"name":"%s","imageUri":"%s"}]' "${CONTAINER_NAME}" "${REPOSITORY_URI}:${IMAGE_TAG}" > imagedefinitions.json
+      - 'echo "Pushing image to ECR..."'
+      - 'docker push "${REPOSITORY_URI}:${IMAGE_TAG}"'
+      - 'docker push "${REPOSITORY_URI}:latest"'
+      - 'printf ''[{"name":"%s","imageUri":"%s"}]'' "$CONTAINER_NAME" "${REPOSITORY_URI}:${IMAGE_TAG}" > imagedefinitions.json'
 
 artifacts:
   files:
-    - imagedefinitions.json
+    - "imagedefinitions.json"
